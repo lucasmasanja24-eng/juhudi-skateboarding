@@ -1,0 +1,101 @@
+import Nav from '../components/Nav'
+import Link from 'next/link'
+
+export default function Schedule({ session, profile }) {
+  const sessions = [
+    ['Monday', '4:00–6:00 PM', 'General Training', 'All Levels', 'Tricks, basics, free skate', 'open'],
+    ['Wednesday', '4:00–6:00 PM', 'Skills Workshop', 'Intermediate', 'Focused technique session', 'adv'],
+    ['Friday', '4:00–7:00 PM', 'Friday Session', 'All Levels', 'Extended + filming', 'open'],
+    ['Saturday', '8:00–10:00 AM', 'Girls Session', 'Girls Only', 'Safe, dedicated space for girls', 'girls'],
+    ['Saturday', '2:00–5:00 PM', 'Community Jam', 'All Welcome', 'Open community session', 'open'],
+    ['Sunday', '10:00 AM–1:00 PM', 'Private Classes', 'By Booking', null, 'adv'],
+  ]
+
+  const badgeColors = {
+    open: { background: 'rgba(100,200,100,0.12)', color: '#6dc86d' },
+    adv: { background: 'rgba(200,162,50,0.12)', color: 'var(--gold)' },
+    girls: { background: 'rgba(200,100,200,0.12)', color: '#d090d0' },
+  }
+
+  const events = [
+    { day: '15', month: 'MAY', title: 'Community Skate Jam', desc: 'Open to all skill levels. Music, tricks, good vibes at Juhudi Secondary Court.' },
+    { day: '01', month: 'JUN', title: 'Photography Workshop', desc: 'Learn skate photography and filming. Run by community volunteers.' },
+  ]
+
+  return (
+    <>
+      <Nav session={session} profile={profile} />
+      <div style={S.page}>
+        <div style={S.inner}>
+          <div className="section-label">Training &amp; Events</div>
+          <h1 className="section-title">WEEKLY SCHEDULE</h1>
+          <div className="divider" />
+          <p style={S.location}>📍 Juhudi Secondary School Basketball Court, Gongo la Mboto</p>
+
+          <div style={{ overflowX: 'auto' }}>
+            <table style={S.table}>
+              <thead>
+                <tr>{['Day', 'Time', 'Session', 'Level', 'Notes'].map(h => <th key={h} style={S.th}>{h}</th>)}</tr>
+              </thead>
+              <tbody>
+                {sessions.map(([day, time, name, level, notes, type]) => (
+                  <tr key={day + time} style={S.tr}>
+                    <td style={S.td}>{day}</td>
+                    <td style={S.td}>{time}</td>
+                    <td style={S.td}>{name}</td>
+                    <td style={S.td}><span style={{ ...S.badge, ...badgeColors[type] }}>{level}</span></td>
+                    <td style={S.td}>
+                      {notes || (
+                        <Link href="/booking" style={S.bookBtn}>Book Now</Link>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div style={{ marginTop: '3rem' }}>
+            <div className="section-label">Events</div>
+            <h2 style={S.evTitle}>UPCOMING</h2>
+            <div style={S.evGrid}>
+              {events.map(ev => (
+                <div key={ev.title} style={S.evCard}>
+                  <div style={S.evDate}>
+                    <div style={S.evDay}>{ev.day}</div>
+                    <div style={S.evMonth}>{ev.month}</div>
+                  </div>
+                  <div>
+                    <div style={S.evName}>{ev.title}</div>
+                    <div style={S.evDesc}>{ev.desc}</div>
+                    <span style={{ ...S.badge, background: 'rgba(230,90,30,0.12)', color: '#e0602a', marginTop: '0.4rem', display: 'inline-block' }}>UPCOMING</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  )
+}
+
+const S = {
+  page: { padding: '5rem 1.4rem 3rem' },
+  inner: { maxWidth: 1040, margin: '0 auto' },
+  location: { color: 'var(--muted)', marginBottom: '0.5rem', fontSize: '0.82rem', fontFamily: "'Space Mono',monospace" },
+  table: { width: '100%', borderCollapse: 'collapse', marginTop: '1.3rem' },
+  th: { fontFamily: "'Space Mono',monospace", fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gold)', padding: '0.65rem 0.85rem', borderBottom: '1px solid rgba(200,162,50,0.22)', textAlign: 'left' },
+  tr: {},
+  td: { padding: '0.8rem 0.85rem', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '0.86rem', color: 'rgba(255,255,255,0.78)' },
+  badge: { display: 'inline-block', padding: '0.18rem 0.5rem', fontFamily: "'Space Mono',monospace", fontSize: '0.56rem', letterSpacing: '0.05em' },
+  bookBtn: { background: 'var(--gold)', color: 'var(--blk)', fontFamily: "'Space Mono',monospace", fontSize: '0.56rem', padding: '0.26rem 0.6rem', textDecoration: 'none', fontWeight: 700 },
+  evTitle: { fontFamily: "'Bebas Neue',sans-serif", fontSize: '2rem', marginBottom: '1rem' },
+  evGrid: { display: 'grid', gap: '0.8rem' },
+  evCard: { display: 'grid', gridTemplateColumns: '70px 1fr', gap: '1.1rem', padding: '1.1rem', border: '1px solid rgba(200,162,50,0.18)', alignItems: 'center' },
+  evDate: { textAlign: 'center' },
+  evDay: { fontFamily: "'Bebas Neue',sans-serif", fontSize: '2.2rem', color: 'var(--gold)', lineHeight: 1 },
+  evMonth: { fontFamily: "'Space Mono',monospace", fontSize: '0.58rem', color: 'var(--muted)', letterSpacing: '0.1em' },
+  evName: { fontFamily: "'Bebas Neue',sans-serif", fontSize: '1.3rem', marginBottom: '0.2rem' },
+  evDesc: { fontSize: '0.82rem', color: 'var(--muted)' },
+}

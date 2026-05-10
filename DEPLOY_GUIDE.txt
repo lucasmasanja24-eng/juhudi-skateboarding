@@ -1,0 +1,112 @@
+# JUHUDI SKATEBOARDING — DEPLOYMENT GUIDE
+# Follow these steps to go live. Takes about 30 minutes.
+
+=======================================================
+STEP 1: UPLOAD YOUR LOGO
+=======================================================
+Copy your logo image into the /public folder as:
+  /public/logo.jpg
+
+
+=======================================================
+STEP 2: SET UP SUPABASE (Free Database & Auth)
+=======================================================
+1. Go to https://supabase.com and click "Start your project"
+2. Sign up with GitHub or email
+3. Click "New Project"
+   - Name: juhudi-skateboarding
+   - Password: (create a strong one, save it)
+   - Region: pick East Africa or closest available
+4. Wait ~2 minutes for project to start
+
+5. Go to: Project → SQL Editor → New Query
+6. Copy ALL the contents of supabase_schema.sql
+7. Paste and click "Run" — you should see "Success"
+
+8. Go to: Project → Storage
+   Create 3 buckets:
+   - Name: "gallery"   → Make Public: YES
+   - Name: "profiles"  → Make Public: YES
+   - Name: "posts"     → Make Public: YES
+
+9. Go to: Project → Settings → API
+   Copy these two values:
+   - Project URL  (looks like: https://xxxxx.supabase.co)
+   - anon/public key (long string starting with eyJ...)
+
+
+=======================================================
+STEP 3: ADD YOUR ENVIRONMENT VARIABLES
+=======================================================
+Open the file: .env.local
+Replace with your real values:
+
+  NEXT_PUBLIC_SUPABASE_URL=https://YOUR-PROJECT-ID.supabase.co
+  NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR-ANON-KEY-HERE
+
+
+=======================================================
+STEP 4: DEPLOY TO VERCEL (Free Hosting)
+=======================================================
+1. Go to https://github.com and create a free account
+2. Create a new repository called "juhudi-skateboarding"
+3. Upload ALL the project files into that repository
+
+4. Go to https://vercel.com and sign up with GitHub
+5. Click "Add New Project"
+6. Import your "juhudi-skateboarding" repository
+7. Before clicking Deploy, click "Environment Variables"
+   Add both variables:
+   - NEXT_PUBLIC_SUPABASE_URL = (your value)
+   - NEXT_PUBLIC_SUPABASE_ANON_KEY = (your value)
+8. Click Deploy
+9. Wait ~2 minutes — Vercel gives you a live URL like:
+   https://juhudi-skateboarding.vercel.app
+
+
+=======================================================
+STEP 5: MAKE YOURSELF ADMIN
+=======================================================
+1. Go to your live site and click Login → Sign Up
+2. Create your account (lucas@juhudi.com)
+3. Go back to Supabase → SQL Editor → New Query
+4. Run this (replace email if different):
+
+   update public.profiles
+   set is_admin = true, is_approved = true
+   where email = 'lucas@juhudi.com';
+
+5. Log in — you will now see the "Admin" button in the nav
+
+
+=======================================================
+STEP 6: UPDATE next.config.js
+=======================================================
+Open next.config.js and replace the domain:
+  domains: ['YOUR-PROJECT-ID.supabase.co']
+
+
+=======================================================
+STEP 7: CUSTOM DOMAIN (Optional)
+=======================================================
+If you want www.juhudiskateboarding.com or similar:
+1. Buy a domain at Namecheap or Porkbun (~$10/year)
+2. In Vercel → your project → Settings → Domains
+3. Add your domain and follow the DNS instructions
+
+
+=======================================================
+HOW IT WORKS ONCE LIVE
+=======================================================
+- Friend visits site → clicks Sign Up → fills form
+- You get notified (check Supabase → Table Editor → profiles)
+- You log in as admin → Admin panel → User Approvals
+- Click Approve → they can now log in instantly
+- All data is real, stored in Supabase, visible to you only
+
+=======================================================
+NEED HELP?
+=======================================================
+Supabase docs:  https://supabase.com/docs
+Vercel docs:    https://vercel.com/docs
+Next.js docs:   https://nextjs.org/docs
