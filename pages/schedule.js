@@ -1,20 +1,34 @@
+import { useEffect, useState } from 'react'
 import Nav from '../components/Nav'
 import Link from 'next/link'
+import { getTimetable } from '../lib/supabase'
 
 export default function Schedule({ session, profile }) {
-  const sessions = [
-    ['Monday', '4:00–6:00 PM', 'General Training', 'All Levels', 'Tricks, basics, free skate', 'open'],
-    ['Wednesday', '4:00–6:00 PM', 'Skills Workshop', 'Intermediate', 'Focused technique session', 'adv'],
-    ['Friday', '4:00–7:00 PM', 'Friday Session', 'All Levels', 'Extended + filming', 'open'],
-    ['Saturday', '8:00–10:00 AM', 'Girls Session', 'Girls Only', 'Safe, dedicated space for girls', 'girls'],
-    ['Saturday', '2:00–5:00 PM', 'Community Jam', 'All Welcome', 'Open community session', 'open'],
-    ['Sunday', '10:00 AM–1:00 PM', 'Private Classes', 'By Booking', null, 'adv'],
+  const [timetable, setTimetable] = useState([])
+
+  useEffect(() => {
+    getTimetable().then(d => setTimetable(d || [])).catch(() => {})
+  }, [])
+
+  const defaultSessions = [
+    { id: 1, day: 'Monday', time: '4:00–6:00 PM', session_name: 'General Training', session_type: 'All Levels', notes: 'Tricks, basics, free skate' },
+    { id: 2, day: 'Wednesday', time: '4:00–6:00 PM', session_name: 'Skills Workshop', session_type: 'Intermediate', notes: 'Focused technique session' },
+    { id: 3, day: 'Friday', time: '4:00–7:00 PM', session_name: 'Friday Session', session_type: 'All Levels', notes: 'Extended + filming' },
+    { id: 4, day: 'Saturday', time: '8:00–10:00 AM', session_name: 'Girls Session', session_type: 'Girls Only', notes: 'Safe, dedicated space for girls' },
+    { id: 5, day: 'Saturday', time: '2:00–5:00 PM', session_name: 'Community Jam', session_type: 'All Welcome', notes: 'Open community session' },
+    { id: 6, day: 'Sunday', time: '10:00 AM–1:00 PM', session_name: 'Private Classes', session_type: 'By Booking', notes: null },
   ]
 
-  const badgeColors = {
-    open: { background: 'rgba(100,200,100,0.12)', color: '#6dc86d' },
-    adv: { background: 'rgba(200,162,50,0.12)', color: 'var(--gold)' },
-    girls: { background: 'rgba(200,100,200,0.12)', color: '#d090d0' },
+  const sessions = timetable.length > 0 ? timetable : defaultSessions
+
+  const typeColors = {
+    'All Levels':   { background: 'rgba(100,200,100,0.12)', color: '#6dc86d' },
+    'All Welcome':  { background: 'rgba(100,200,100,0.12)', color: '#6dc86d' },
+    'Intermediate': { background: 'rgba(200,162,50,0.12)',  color: '#c8a232' },
+    'Advanced':     { background: 'rgba(200,162,50,0.12)',  color: '#c8a232' },
+    'By Booking':   { background: 'rgba(200,162,50,0.12)',  color: '#c8a232' },
+    'Girls Only':   { background: 'rgba(200,100,200,0.12)', color: '#d090d0' },
+    'Beginners':    { background: 'rgba(100,180,255,0.12)', color: '#60b0ff' },
   }
 
   const events = [
@@ -35,17 +49,21 @@ export default function Schedule({ session, profile }) {
           <div style={{ overflowX: 'auto' }}>
             <table style={S.table}>
               <thead>
-                <tr>{['Day', 'Time', 'Session', 'Level', 'Notes'].map(h => <th key={h} style={S.th}>{h}</th>)}</tr>
+                <tr>{['Day','Time','Session','Level','Notes'].map(h => <th key={h} style={S.th}>{h}</th>)}</tr>
               </thead>
               <tbody>
-                {sessions.map(([day, time, name, level, notes, type]) => (
-                  <tr key={day + time} style={S.tr}>
-                    <td style={S.td}>{day}</td>
-                    <td style={S.td}>{time}</td>
-                    <td style={S.td}>{name}</td>
-                    <td style={S.td}><span style={{ ...S.badge, ...badgeColors[type] }}>{level}</span></td>
+                {sessions.map(s => (
+                  <tr key={s.id} style={S.tr}>
+                    <td style={S.td}>{s.day}</td>
+                    <td style={S.td}>{s.time}</td>
+                    <td style={S.td}>{s.session_name}</td>
                     <td style={S.td}>
-                      {notes || (
+                      <span style={{ ...S.badge, ...(typeColors[s.session_type] || {}) }}>
+                        {s.session_type}
+                      </span>
+                    </td>
+                    <td style={S.td}>
+                      {s.notes || (
                         <Link href="/booking" style={S.bookBtn}>Book Now</Link>
                       )}
                     </td>
@@ -68,7 +86,7 @@ export default function Schedule({ session, profile }) {
                   <div>
                     <div style={S.evName}>{ev.title}</div>
                     <div style={S.evDesc}>{ev.desc}</div>
-                    <span style={{ ...S.badge, background: 'rgba(230,90,30,0.12)', color: '#e0602a', marginTop: '0.4rem', display: 'inline-block' }}>UPCOMING</span>
+                    <span style={{ ...S.badge, background: 'rgba(230,90,30,0.12)', color: '#e0602a', marginTop: '0.5rem', display: 'inline-block' }}>UPCOMING</span>
                   </div>
                 </div>
               ))}
@@ -83,19 +101,19 @@ export default function Schedule({ session, profile }) {
 const S = {
   page: { padding: '5rem 1.4rem 3rem' },
   inner: { maxWidth: 1040, margin: '0 auto' },
-  location: { color: 'var(--muted)', marginBottom: '0.5rem', fontSize: '0.82rem', fontFamily: "'Space Mono',monospace" },
+  location: { color: '#6a6a6a', marginBottom: '0.5rem', fontSize: '0.82rem', fontFamily: "'Space Mono',monospace" },
   table: { width: '100%', borderCollapse: 'collapse', marginTop: '1.3rem' },
-  th: { fontFamily: "'Space Mono',monospace", fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gold)', padding: '0.65rem 0.85rem', borderBottom: '1px solid rgba(200,162,50,0.22)', textAlign: 'left' },
+  th: { fontFamily: "'Space Mono',monospace", fontSize: '0.6rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#c8a232', padding: '0.65rem 0.85rem', borderBottom: '1px solid rgba(200,162,50,0.22)', textAlign: 'left' },
   tr: {},
   td: { padding: '0.8rem 0.85rem', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '0.86rem', color: 'rgba(255,255,255,0.78)' },
   badge: { display: 'inline-block', padding: '0.18rem 0.5rem', fontFamily: "'Space Mono',monospace", fontSize: '0.56rem', letterSpacing: '0.05em' },
-  bookBtn: { background: 'var(--gold)', color: 'var(--blk)', fontFamily: "'Space Mono',monospace", fontSize: '0.56rem', padding: '0.26rem 0.6rem', textDecoration: 'none', fontWeight: 700 },
+  bookBtn: { background: '#c8a232', color: '#090909', fontFamily: "'Space Mono',monospace", fontSize: '0.56rem', padding: '0.26rem 0.6rem', textDecoration: 'none', fontWeight: 700 },
   evTitle: { fontFamily: "'Bebas Neue',sans-serif", fontSize: '2rem', marginBottom: '1rem' },
   evGrid: { display: 'grid', gap: '0.8rem' },
   evCard: { display: 'grid', gridTemplateColumns: '70px 1fr', gap: '1.1rem', padding: '1.1rem', border: '1px solid rgba(200,162,50,0.18)', alignItems: 'center' },
   evDate: { textAlign: 'center' },
-  evDay: { fontFamily: "'Bebas Neue',sans-serif", fontSize: '2.2rem', color: 'var(--gold)', lineHeight: 1 },
-  evMonth: { fontFamily: "'Space Mono',monospace", fontSize: '0.58rem', color: 'var(--muted)', letterSpacing: '0.1em' },
+  evDay: { fontFamily: "'Bebas Neue',sans-serif", fontSize: '2.2rem', color: '#c8a232', lineHeight: 1 },
+  evMonth: { fontFamily: "'Space Mono',monospace", fontSize: '0.58rem', color: '#6a6a6a', letterSpacing: '0.1em' },
   evName: { fontFamily: "'Bebas Neue',sans-serif", fontSize: '1.3rem', marginBottom: '0.2rem' },
-  evDesc: { fontSize: '0.82rem', color: 'var(--muted)' },
+  evDesc: { fontSize: '0.82rem', color: '#6a6a6a' },
 }
