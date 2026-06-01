@@ -61,29 +61,29 @@ function Fg({ label, children }) {
 
 export default function Admin({ session, profile }) {
   const router = useRouter()
-  const [sec, setSec]           = useState('overview')
-  const [pending, setPending]   = useState([])
-  const [members, setMembers]   = useState([])
-  const [bookings, setBookings] = useState([])
-  const [gallery, setGallery]   = useState([])
-  const [posts, setPosts]       = useState([])
-  const [tt, setTt]             = useState([])
-  const [reviews, setReviews]   = useState([])
-  const [toast, setToast]       = useState('')
+  const [sec, setSec]             = useState('overview')
+  const [pending, setPending]     = useState([])
+  const [members, setMembers]     = useState([])
+  const [bookings, setBookings]   = useState([])
+  const [gallery, setGallery]     = useState([])
+  const [posts, setPosts]         = useState([])
+  const [tt, setTt]               = useState([])
+  const [reviews, setReviews]     = useState([])
+  const [toast, setToast]         = useState('')
   const [toastType, setToastType] = useState('ok')
-  const [editM, setEditM]       = useState(null)
-  const [editTT, setEditTT]     = useState(null)
+  const [editM, setEditM]         = useState(null)
+  const [editTT, setEditTT]       = useState(null)
   const [showAddTT, setShowAddTT] = useState(false)
-  const [galFile, setGalFile]   = useState(null)
-  const [galPrev, setGalPrev]   = useState(null)
+  const [galFile, setGalFile]     = useState(null)
+  const [galPrev, setGalPrev]     = useState(null)
   const [galLoading, setGalLoading] = useState(false)
-  const [galForm, setGalForm]   = useState({title:'',caption:''})
-  const [postForm, setPostForm] = useState({title:'',content:''})
+  const [galForm, setGalForm]     = useState({title:'',caption:''})
+  const [postForm, setPostForm]   = useState({title:'',content:''})
   const [postMedia, setPostMedia] = useState(null)
   const [postMediaPrev, setPostMediaPrev] = useState(null)
   const [postLoading, setPostLoading] = useState(false)
-  const [newTT, setNewTT]       = useState({day:'Monday',time:'',session_name:'',session_type:'All Levels',notes:'',sort_order:0})
-  const [newM, setNewM]         = useState({
+  const [newTT, setNewTT]         = useState({day:'Monday',time:'',session_name:'',session_type:'All Levels',notes:'',sort_order:0})
+  const [newM, setNewM]           = useState({
     full_name:'',email:'',date_of_birth:'',gender:'Male',
     category:'Student',school:'',grade:'',
     emergency_name:'',emergency_relationship:'Parent',emergency_phone:'',
@@ -107,87 +107,164 @@ export default function Admin({ session, profile }) {
     } catch(e) { showToast('Error loading: '+e.message,'err') }
   }
 
-  function showToast(msg,type='ok'){setToast(msg);setToastType(type);setTimeout(()=>setToast(''),3800)}
-
-  // APPROVALS
-  async function doApprove(id){try{await approveUser(id);setPending(p=>p.filter(u=>u.id!==id));showToast('User approved! ✅');load()}catch(e){showToast('Error: '+e.message,'err')}}
-  async function doReject(id){if(!confirm('Reject and delete this user?'))return;try{await rejectUser(id);setPending(p=>p.filter(u=>u.id!==id));showToast('User rejected.')}catch(e){showToast('Error: '+e.message,'err')}}
-
-  // MEMBERS
-  async function doUpdateMember(id,updates){try{await updateProfile(id,updates);setEditM(null);load();showToast('Member updated! ✅')}catch(e){showToast('Error: '+e.message,'err')}}
-  async function doDeleteMember(id){if(!confirm('Remove this member permanently?'))return;try{await deleteMember(id);load();showToast('Member removed.')}catch(e){showToast('Error: '+e.message,'err')}}
-  async function doToggleVisible(id,vis){try{await toggleMemberVisibility(id,vis);load();showToast('Visibility updated.')}catch(e){showToast('Error: '+e.message,'err')}}
-  async function doPhotoUpload(id,file){try{const url=await uploadProfilePhoto(id,file);await updateProfile(id,{photo_url:url});load();showToast('Photo updated! ✅')}catch(e){showToast('Photo upload failed: '+e.message,'err')}}
-
-  async function doAddMember(e){
-    e.preventDefault()
-    if(!newM.full_name){showToast('Name is required','err');return}
-    try{
-      const{error}=await supabase.from('profiles').insert({
-        id:crypto.randomUUID(),
-        email:newM.email||`${Date.now()}@juhudi.local`,
-        full_name:newM.full_name,
-        date_of_birth:newM.date_of_birth||null,
-        gender:newM.gender,
-        category:newM.category,
-        student:newM.category==='Student',
-        working:newM.category==='Working',
-        school:newM.school||null,
-        grade:newM.grade||null,
-        emergency_name:newM.emergency_name||null,
-        emergency_relationship:newM.emergency_relationship||null,
-        emergency_phone:newM.emergency_phone||null,
-        stance:newM.stance,
-        level:newM.level,
-        favourite_trick:newM.favourite_trick,
-        idol_skater:newM.idol_skater,
-        bio:newM.bio,
-        role:newM.role,
-        is_approved:true,is_visible:true,is_admin:false,
-      })
-      if(error)throw error
-      setNewM({full_name:'',email:'',date_of_birth:'',gender:'Male',category:'Student',school:'',grade:'',emergency_name:'',emergency_relationship:'Parent',emergency_phone:'',stance:'Regular',level:'Beginner',favourite_trick:'',idol_skater:'',bio:'',role:'Member'})
-      load();showToast('Member added! ✅')
-    }catch(e){showToast('Error: '+e.message,'err')}
+  function showToast(msg,type='ok'){
+    setToast(msg); setToastType(type)
+    setTimeout(()=>setToast(''),3800)
   }
 
-  // BOOKINGS
-  async function doBookingStatus(id,status){try{await updateBookingStatus(id,status);load();showToast(`Booking ${status.toLowerCase()}. ✅`)}catch(e){showToast('Error: '+e.message,'err')}}
+  // ── USER APPROVALS ─────────────────────────────────────
+  // FIX: remove from pending list instantly on approve
+  async function doApprove(id) {
+    try {
+      await approveUser(id)
+      // Remove from pending list immediately — don't wait for reload
+      setPending(prev => prev.filter(u => u.id !== id))
+      showToast('User approved! They now appear on the team page. ✅')
+      // Reload members list so they show up in All Members
+      const m = await getAllMembers()
+      setMembers(m||[])
+    } catch(e){ showToast('Error: '+e.message,'err') }
+  }
 
-  // GALLERY
-  function handleGalFile(e){const f=e.target.files[0];if(!f)return;setGalFile(f);const r=new FileReader();r.onload=ev=>setGalPrev(ev.target.result);r.readAsDataURL(f)}
-  async function doGalleryUpload(e){
-    e.preventDefault();if(!galFile){showToast('Select an image first','err');return}
+  async function doReject(id) {
+    if(!confirm('Reject and permanently delete this user?')) return
+    try {
+      await rejectUser(id)
+      // Remove from pending list immediately
+      setPending(prev => prev.filter(u => u.id !== id))
+      showToast('User rejected and removed.')
+    } catch(e){ showToast('Error: '+e.message,'err') }
+  }
+
+  // ── MEMBERS ────────────────────────────────────────────
+  async function doUpdateMember(id,updates) {
+    try { await updateProfile(id,updates); setEditM(null); load(); showToast('Member updated! ✅') }
+    catch(e){ showToast('Error: '+e.message,'err') }
+  }
+  async function doDeleteMember(id) {
+    if(!confirm('Remove this member permanently?')) return
+    try { await deleteMember(id); load(); showToast('Member removed.') }
+    catch(e){ showToast('Error: '+e.message,'err') }
+  }
+  async function doToggleVisible(id,vis) {
+    try { await toggleMemberVisibility(id,vis); load(); showToast('Visibility updated.') }
+    catch(e){ showToast('Error: '+e.message,'err') }
+  }
+  async function doPhotoUpload(id,file) {
+    try { const url=await uploadProfilePhoto(id,file); await updateProfile(id,{photo_url:url}); load(); showToast('Photo updated! ✅') }
+    catch(e){ showToast('Photo upload failed: '+e.message,'err') }
+  }
+  async function doAddMember(e) {
+    e.preventDefault()
+    if(!newM.full_name){ showToast('Name is required','err'); return }
+    try {
+      const{error}=await supabase.from('profiles').insert({
+        id: crypto.randomUUID(),
+        email: newM.email||`${Date.now()}@juhudi.local`,
+        full_name: newM.full_name,
+        date_of_birth: newM.date_of_birth||null,
+        gender: newM.gender,
+        category: newM.category,
+        student: newM.category==='Student',
+        working: newM.category==='Working',
+        school: newM.school||null,
+        grade: newM.grade||null,
+        emergency_name: newM.emergency_name||null,
+        emergency_relationship: newM.emergency_relationship||null,
+        emergency_phone: newM.emergency_phone||null,
+        stance: newM.stance,
+        level: newM.level,
+        favourite_trick: newM.favourite_trick,
+        idol_skater: newM.idol_skater,
+        bio: newM.bio,
+        role: newM.role,
+        is_approved: true,
+        is_visible: true,
+        is_admin: false,
+      })
+      if(error) throw error
+      setNewM({full_name:'',email:'',date_of_birth:'',gender:'Male',category:'Student',school:'',grade:'',emergency_name:'',emergency_relationship:'Parent',emergency_phone:'',stance:'Regular',level:'Beginner',favourite_trick:'',idol_skater:'',bio:'',role:'Member'})
+      load(); showToast('Member added and visible on team page! ✅')
+    } catch(e){ showToast('Error: '+e.message,'err') }
+  }
+
+  // ── BOOKINGS ───────────────────────────────────────────
+  async function doBookingStatus(id,status) {
+    try { await updateBookingStatus(id,status); load(); showToast(`Booking ${status.toLowerCase()}. ✅`) }
+    catch(e){ showToast('Error: '+e.message,'err') }
+  }
+
+  // ── GALLERY ────────────────────────────────────────────
+  function handleGalFile(e) {
+    const f=e.target.files[0]; if(!f) return
+    setGalFile(f)
+    const r=new FileReader(); r.onload=ev=>setGalPrev(ev.target.result); r.readAsDataURL(f)
+  }
+  async function doGalleryUpload(e) {
+    e.preventDefault(); if(!galFile){showToast('Select an image first','err');return}
     setGalLoading(true)
-    try{await uploadGalleryImage(galFile,galForm.caption,galForm.title);setGalFile(null);setGalPrev(null);setGalForm({title:'',caption:''});document.getElementById('galFileIn').value='';load();showToast('Photo published! ✅')}
-    catch(e){showToast('Upload failed: '+e.message,'err')}
+    try {
+      await uploadGalleryImage(galFile,galForm.caption,galForm.title)
+      setGalFile(null); setGalPrev(null); setGalForm({title:'',caption:''})
+      document.getElementById('galFileIn').value=''
+      load(); showToast('Photo published to gallery! ✅')
+    } catch(e){ showToast('Upload failed: '+e.message,'err') }
     setGalLoading(false)
   }
-  async function doDeleteGal(id){if(!confirm('Remove this photo?'))return;try{await deleteGalleryItem(id);load();showToast('Photo removed.')}catch(e){showToast('Error: '+e.message,'err')}}
+  async function doDeleteGal(id) {
+    if(!confirm('Remove this photo?')) return
+    try { await deleteGalleryItem(id); load(); showToast('Photo removed.') }
+    catch(e){ showToast('Error: '+e.message,'err') }
+  }
 
-  // POSTS
-  function handlePostMedia(e){const f=e.target.files[0];if(!f)return;setPostMedia(f);const r=new FileReader();r.onload=ev=>setPostMediaPrev({src:ev.target.result,type:f.type.startsWith('video')?'video':'image'});r.readAsDataURL(f)}
-  async function doPublishPost(e){
-    e.preventDefault();if(!postForm.title||!postForm.content){showToast('Fill title and content','err');return}
+  // ── POSTS ──────────────────────────────────────────────
+  function handlePostMedia(e) {
+    const f=e.target.files[0]; if(!f) return
+    setPostMedia(f)
+    const r=new FileReader(); r.onload=ev=>setPostMediaPrev({src:ev.target.result,type:f.type.startsWith('video')?'video':'image'}); r.readAsDataURL(f)
+  }
+  async function doPublishPost(e) {
+    e.preventDefault(); if(!postForm.title||!postForm.content){showToast('Fill title and content','err');return}
     setPostLoading(true)
-    try{await createPost({title:postForm.title,content:postForm.content,mediaFile:postMedia});setPostForm({title:'',content:''});setPostMedia(null);setPostMediaPrev(null);load();showToast('Post published! ✅')}
-    catch(e){showToast('Error: '+e.message,'err')}
+    try {
+      await createPost({title:postForm.title,content:postForm.content,mediaFile:postMedia})
+      setPostForm({title:'',content:''}); setPostMedia(null); setPostMediaPrev(null)
+      load(); showToast('Post published! ✅')
+    } catch(e){ showToast('Error: '+e.message,'err') }
     setPostLoading(false)
   }
-  async function doDeletePost(id){if(!confirm('Delete this post?'))return;try{await deletePost(id);load();showToast('Post deleted.')}catch(e){showToast('Error: '+e.message,'err')}}
-
-  // TIMETABLE
-  async function doAddTT(e){
-    e.preventDefault();if(!newTT.time||!newTT.session_name){showToast('Fill time and session name','err');return}
-    try{await addTimetableSession(newTT);setNewTT({day:'Monday',time:'',session_name:'',session_type:'All Levels',notes:'',sort_order:0});setShowAddTT(false);load();showToast('Session added! ✅')}
-    catch(e){showToast('Error: '+e.message,'err')}
+  async function doDeletePost(id) {
+    if(!confirm('Delete this post?')) return
+    try { await deletePost(id); load(); showToast('Post deleted.') }
+    catch(e){ showToast('Error: '+e.message,'err') }
   }
-  async function doUpdateTT(id,data){try{await updateTimetableSession(id,data);setEditTT(null);load();showToast('Session updated! ✅')}catch(e){showToast('Error: '+e.message,'err')}}
-  async function doDeleteTT(id){if(!confirm('Delete this session?'))return;try{await deleteTimetableSession(id);load();showToast('Session deleted.')}catch(e){showToast('Error: '+e.message,'err')}}
 
-  // REVIEWS
-  async function doApproveReview(id){try{await approveReview(id);load();showToast('Review approved! ✅')}catch(e){showToast('Error: '+e.message,'err')}}
-  async function doDeleteReview(id){if(!confirm('Delete this review?'))return;try{await deleteReview(id);load();showToast('Review deleted.')}catch(e){showToast('Error: '+e.message,'err')}}
+  // ── TIMETABLE ──────────────────────────────────────────
+  async function doAddTT(e) {
+    e.preventDefault(); if(!newTT.time||!newTT.session_name){showToast('Fill time and session name','err');return}
+    try { await addTimetableSession(newTT); setNewTT({day:'Monday',time:'',session_name:'',session_type:'All Levels',notes:'',sort_order:0}); setShowAddTT(false); load(); showToast('Session added! ✅') }
+    catch(e){ showToast('Error: '+e.message,'err') }
+  }
+  async function doUpdateTT(id,data) {
+    try { await updateTimetableSession(id,data); setEditTT(null); load(); showToast('Session updated! ✅') }
+    catch(e){ showToast('Error: '+e.message,'err') }
+  }
+  async function doDeleteTT(id) {
+    if(!confirm('Delete this session?')) return
+    try { await deleteTimetableSession(id); load(); showToast('Session deleted.') }
+    catch(e){ showToast('Error: '+e.message,'err') }
+  }
+
+  // ── REVIEWS ────────────────────────────────────────────
+  async function doApproveReview(id) {
+    try { await approveReview(id); load(); showToast('Review approved and published! ✅') }
+    catch(e){ showToast('Error: '+e.message,'err') }
+  }
+  async function doDeleteReview(id) {
+    if(!confirm('Delete this review?')) return
+    try { await deleteReview(id); load(); showToast('Review deleted.') }
+    catch(e){ showToast('Error: '+e.message,'err') }
+  }
 
   const pendingReviews = reviews.filter(r=>!r.is_approved).length
 
@@ -196,12 +273,12 @@ export default function Admin({ session, profile }) {
     {id:'users',        label:'👤 User Approvals',  count:pending.length},
     {id:'addmember',    label:'➕ Add Member'},
     {id:'members',      label:'👥 All Members'},
-    {id:'bookings',     label:'📅 Bookings',         count:bookings.filter(b=>b.status==='Pending').length},
+    {id:'bookings',     label:'📅 Bookings',        count:bookings.filter(b=>b.status==='Pending').length},
     {id:'gallery',      label:'📷 Gallery Upload'},
     {id:'posts',        label:'📝 Posts & Updates'},
     {id:'schedule',     label:'🕐 Timetable'},
     {id:'teamprofiles', label:'🛹 Team Profiles'},
-    {id:'reviews',      label:'💬 Reviews',          count:pendingReviews},
+    {id:'reviews',      label:'💬 Reviews',         count:pendingReviews},
   ]
 
   return (
@@ -238,7 +315,15 @@ export default function Admin({ session, profile }) {
               <div>
                 <div style={A.title}>OVERVIEW</div>
                 <div style={A.cards}>
-                  {[['Members',members.length],['Pending Users',pending.length],['Bookings',bookings.filter(b=>b.status==='Pending').length],['Gallery',gallery.length],['Posts',posts.length],['Schedule',tt.length],['Reviews',pendingReviews+' new']].map(([l,n])=>(
+                  {[
+                    ['Members',members.filter(m=>m.is_approved).length],
+                    ['Pending Users',pending.length],
+                    ['Pending Bookings',bookings.filter(b=>b.status==='Pending').length],
+                    ['Gallery Photos',gallery.length],
+                    ['Posts',posts.length],
+                    ['Schedule Sessions',tt.length],
+                    ['Pending Reviews',pendingReviews],
+                  ].map(([l,n])=>(
                     <div key={l} style={A.card}><div style={A.cardN}>{n}</div><div style={A.cardL}>{l}</div></div>
                   ))}
                 </div>
@@ -249,7 +334,7 @@ export default function Admin({ session, profile }) {
                   <button className="btn-primary" onClick={()=>setSec('posts')}>Write a Post</button>
                   <button className="btn-primary" onClick={()=>setSec('gallery')}>Upload Photo</button>
                   <button className="btn-primary" onClick={()=>setSec('schedule')}>Edit Timetable</button>
-                  <button className="btn-primary" onClick={()=>setSec('reviews')}>Manage Reviews ({pendingReviews})</button>
+                  <button className="btn-primary" onClick={()=>setSec('reviews')}>Review Comments ({pendingReviews})</button>
                 </div>
               </div>
             )}
@@ -258,34 +343,38 @@ export default function Admin({ session, profile }) {
             {sec==='users'&&(
               <div>
                 <div style={A.title}>USER APPROVALS</div>
-                {pending.length===0?<div style={A.emptyBox}>✅ No pending users — all caught up!</div>:(
-                  <div style={{overflowX:'auto'}}>
-                    <table style={A.tbl}>
-                      <thead><tr>{['Name','Email','DOB','Age','Gender','Category','School','Grade','Emergency Contact','Phone','Requested','Actions'].map(h=><th key={h} style={A.th}>{h}</th>)}</tr></thead>
-                      <tbody>
-                        {pending.map(u=>(
-                          <tr key={u.id}>
-                            <td style={A.td}><strong>{u.full_name}</strong></td>
-                            <td style={A.td}>{u.email}</td>
-                            <td style={A.td}><span style={A.mono}>{u.date_of_birth||'—'}</span></td>
-                            <td style={A.td}><span style={A.gold}>{u.date_of_birth?calcAge(u.date_of_birth)+'y':'—'}</span></td>
-                            <td style={A.td}>{u.gender||'—'}</td>
-                            <td style={A.td}><span style={{...A.catB,...catColor(u.category)}}>{u.category||'—'}</span></td>
-                            <td style={A.td}>{u.school||'—'}</td>
-                            <td style={A.td}>{u.grade||'—'}</td>
-                            <td style={A.td}>{u.emergency_name||'—'} {u.emergency_relationship?`(${u.emergency_relationship})`:''}</td>
-                            <td style={A.td}>{u.emergency_phone||'—'}</td>
-                            <td style={A.td}><span style={A.mono}>{new Date(u.created_at).toLocaleDateString()}</span></td>
-                            <td style={A.td}>
-                              <button style={A.btnG} onClick={()=>doApprove(u.id)}>✅ Approve</button>
-                              <button style={A.btnR} onClick={()=>doReject(u.id)}>❌ Reject</button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                <p style={A.subP}>When you approve a user they immediately appear on the Team page and disappear from this list.</p>
+                {pending.length===0
+                  ? <div style={A.emptyBox}>✅ No pending users — all caught up!</div>
+                  : (
+                    <div style={{overflowX:'auto'}}>
+                      <table style={A.tbl}>
+                        <thead><tr>{['Name','Email','DOB','Age','Gender','Category','School','Grade','Emergency Contact','Phone','Requested','Actions'].map(h=><th key={h} style={A.th}>{h}</th>)}</tr></thead>
+                        <tbody>
+                          {pending.map(u=>(
+                            <tr key={u.id}>
+                              <td style={A.td}><strong>{u.full_name}</strong></td>
+                              <td style={A.td}>{u.email}</td>
+                              <td style={A.td}><span style={A.mono}>{u.date_of_birth||'—'}</span></td>
+                              <td style={A.td}><span style={A.gold}>{u.date_of_birth?calcAge(u.date_of_birth)+'y':'—'}</span></td>
+                              <td style={A.td}>{u.gender||'—'}</td>
+                              <td style={A.td}><span style={{...A.catB,...catColor(u.category)}}>{u.category||'—'}</span></td>
+                              <td style={A.td}>{u.school||'—'}</td>
+                              <td style={A.td}>{u.grade||'—'}</td>
+                              <td style={A.td}>{u.emergency_name||'—'}{u.emergency_relationship?` (${u.emergency_relationship})`:''}</td>
+                              <td style={A.td}>{u.emergency_phone||'—'}</td>
+                              <td style={A.td}><span style={A.mono}>{new Date(u.created_at).toLocaleDateString()}</span></td>
+                              <td style={A.td}>
+                                <button style={A.btnG} onClick={()=>doApprove(u.id)}>✅ Approve</button>
+                                <button style={A.btnR} onClick={()=>doReject(u.id)}>❌ Reject</button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )
+                }
               </div>
             )}
 
@@ -293,7 +382,7 @@ export default function Admin({ session, profile }) {
             {sec==='addmember'&&(
               <div>
                 <div style={A.title}>ADD MEMBER DIRECTLY</div>
-                <p style={A.subP}>Add a member manually without them needing to sign up.</p>
+                <p style={A.subP}>Add a member manually — they appear on the team page immediately.</p>
                 <form onSubmit={doAddMember} style={A.formBox}>
                   <div style={A.sHead}>Personal Information</div>
                   <div style={A.frow}>
@@ -339,7 +428,7 @@ export default function Admin({ session, profile }) {
                     <Fg label="Idol Skater"><input className="input" value={newM.idol_skater} onChange={e=>setNewM({...newM,idol_skater:e.target.value})} placeholder="e.g. Tony Hawk"/></Fg>
                   </div>
                   <Fg label="Bio"><textarea className="input" rows={2} value={newM.bio} onChange={e=>setNewM({...newM,bio:e.target.value})} placeholder="Short bio..." style={{resize:'vertical'}}/></Fg>
-                  <button className="btn-primary" type="submit" style={{marginTop:'0.5rem'}}>Add Member</button>
+                  <button className="btn-primary" type="submit" style={{marginTop:'0.5rem'}}>Add Member to Team</button>
                 </form>
               </div>
             )}
@@ -350,23 +439,24 @@ export default function Admin({ session, profile }) {
                 <div style={A.title}>ALL MEMBERS ({members.length})</div>
                 <div style={{overflowX:'auto'}}>
                   <table style={A.tbl}>
-                    <thead><tr>{['Name','DOB','Age','Category','School','Grade','Emergency','Stance','Level','Visible','Actions'].map(h=><th key={h} style={A.th}>{h}</th>)}</tr></thead>
+                    <thead><tr>{['Name','DOB','Age','Role','Category','School','Grade','Emergency','Stance','Level','Visible','Actions'].map(h=><th key={h} style={A.th}>{h}</th>)}</tr></thead>
                     <tbody>
                       {members.map(m=>(
                         <tr key={m.id}>
                           <td style={A.td}>{m.full_name}{m.is_admin&&<span style={{...A.gold,marginLeft:4}}>[A]</span>}</td>
                           <td style={A.td}><span style={A.mono}>{m.date_of_birth||'—'}</span></td>
                           <td style={A.td}><span style={A.gold}>{m.date_of_birth?calcAge(m.date_of_birth)+'y':'—'}</span></td>
+                          <td style={A.td}>{m.role||'—'}</td>
                           <td style={A.td}><span style={{...A.catB,...catColor(m.category)}}>{m.category||'—'}</span></td>
                           <td style={A.td}>{m.school||'—'}</td>
                           <td style={A.td}>{m.grade||'—'}</td>
-                          <td style={A.td}><span style={{fontSize:'0.75rem',color:'#6a6a6a'}}>{m.emergency_name||'—'}{m.emergency_phone?` · ${m.emergency_phone}`:''}</span></td>
+                          <td style={A.td}><span style={{fontSize:'0.73rem',color:'#6a6a6a'}}>{m.emergency_name||'—'}{m.emergency_phone?` · ${m.emergency_phone}`:''}</span></td>
                           <td style={A.td}>{m.stance||'—'}</td>
                           <td style={A.td}>{m.level||'—'}</td>
                           <td style={A.td}><span style={m.is_visible?A.ok:A.pend}>{m.is_visible?'Yes':'No'}</span></td>
                           <td style={A.td}>
-                            <button style={A.btn} onClick={()=>setEditM(m)}>Edit</button>
-                            <button style={A.btn} onClick={()=>doToggleVisible(m.id,m.is_visible)}>{m.is_visible?'Hide':'Show'}</button>
+                            <button style={A.btn}  onClick={()=>setEditM(m)}>Edit</button>
+                            <button style={A.btn}  onClick={()=>doToggleVisible(m.id,m.is_visible)}>{m.is_visible?'Hide':'Show'}</button>
                             {!m.is_admin&&<button style={A.btnR} onClick={()=>doDeleteMember(m.id)}>Remove</button>}
                           </td>
                         </tr>
@@ -382,34 +472,37 @@ export default function Admin({ session, profile }) {
             {sec==='bookings'&&(
               <div>
                 <div style={A.title}>BOOKINGS</div>
-                {bookings.length===0?<div style={A.emptyBox}>No bookings yet.</div>:(
-                  <div style={{overflowX:'auto'}}>
-                    <table style={A.tbl}>
-                      <thead><tr>{['Name','Phone','DOB','Age','Date','Time','Level','Notes','Status','Actions'].map(h=><th key={h} style={A.th}>{h}</th>)}</tr></thead>
-                      <tbody>
-                        {bookings.map(b=>(
-                          <tr key={b.id}>
-                            <td style={A.td}>{b.full_name}</td>
-                            <td style={A.td}>{b.phone}</td>
-                            <td style={A.td}><span style={A.mono}>{b.date_of_birth||'—'}</span></td>
-                            <td style={A.td}><span style={A.gold}>{b.date_of_birth?calcAge(b.date_of_birth)+'y':'—'}</span></td>
-                            <td style={A.td}>{b.preferred_date}</td>
-                            <td style={A.td}>{b.preferred_time}</td>
-                            <td style={A.td}>{b.skill_level}</td>
-                            <td style={A.td}><span style={{fontSize:'0.75rem',color:'#6a6a6a'}}>{b.notes||'—'}</span></td>
-                            <td style={A.td}><span style={b.status==='Approved'?A.ok:b.status==='Declined'?A.dec:A.pend}>{b.status}</span></td>
-                            <td style={A.td}>
-                              {b.status==='Pending'&&<>
-                                <button style={A.btnG} onClick={()=>doBookingStatus(b.id,'Approved')}>Approve</button>
-                                <button style={A.btnR} onClick={()=>doBookingStatus(b.id,'Declined')}>Decline</button>
-                              </>}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                {bookings.length===0
+                  ? <div style={A.emptyBox}>No bookings yet.</div>
+                  : (
+                    <div style={{overflowX:'auto'}}>
+                      <table style={A.tbl}>
+                        <thead><tr>{['Name','Phone','DOB','Age','Date','Time','Level','Notes','Status','Actions'].map(h=><th key={h} style={A.th}>{h}</th>)}</tr></thead>
+                        <tbody>
+                          {bookings.map(b=>(
+                            <tr key={b.id}>
+                              <td style={A.td}>{b.full_name}</td>
+                              <td style={A.td}>{b.phone}</td>
+                              <td style={A.td}><span style={A.mono}>{b.date_of_birth||'—'}</span></td>
+                              <td style={A.td}><span style={A.gold}>{b.date_of_birth?calcAge(b.date_of_birth)+'y':'—'}</span></td>
+                              <td style={A.td}>{b.preferred_date}</td>
+                              <td style={A.td}>{b.preferred_time}</td>
+                              <td style={A.td}>{b.skill_level}</td>
+                              <td style={A.td}><span style={{fontSize:'0.75rem',color:'#6a6a6a'}}>{b.notes||'—'}</span></td>
+                              <td style={A.td}><span style={b.status==='Approved'?A.ok:b.status==='Declined'?A.dec:A.pend}>{b.status}</span></td>
+                              <td style={A.td}>
+                                {b.status==='Pending'&&<>
+                                  <button style={A.btnG} onClick={()=>doBookingStatus(b.id,'Approved')}>Approve</button>
+                                  <button style={A.btnR} onClick={()=>doBookingStatus(b.id,'Declined')}>Decline</button>
+                                </>}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )
+                }
               </div>
             )}
 
@@ -419,10 +512,10 @@ export default function Admin({ session, profile }) {
                 <div style={A.title}>GALLERY UPLOAD</div>
                 <form onSubmit={doGalleryUpload} style={A.formBox}>
                   <div style={A.uploadZone} onClick={()=>document.getElementById('galFileIn').click()}>
-                    {galPrev?<img src={galPrev} alt="preview" style={{maxHeight:160,maxWidth:'100%',display:'block',margin:'0 auto'}}/>:<>
-                      <div style={{fontSize:'2.5rem',marginBottom:'0.5rem'}}>📷</div>
-                      <div style={{fontFamily:"'Space Mono',monospace",fontSize:'0.72rem',color:'#6a6a6a'}}>Click to select photo (JPG, PNG, WebP)</div>
-                    </>}
+                    {galPrev
+                      ? <img src={galPrev} alt="preview" style={{maxHeight:160,maxWidth:'100%',display:'block',margin:'0 auto'}}/>
+                      : <><div style={{fontSize:'2.5rem',marginBottom:'0.5rem'}}>📷</div><div style={{fontFamily:"'Space Mono',monospace",fontSize:'0.72rem',color:'#6a6a6a'}}>Click to select photo (JPG, PNG, WebP)</div></>
+                    }
                     <input type="file" id="galFileIn" accept="image/*" style={{display:'none'}} onChange={handleGalFile}/>
                   </div>
                   {galFile&&<div style={{fontFamily:"'Space Mono',monospace",fontSize:'0.7rem',color:'#6dc86d',marginBottom:'0.75rem'}}>✓ {galFile.name}</div>}
@@ -465,18 +558,23 @@ export default function Admin({ session, profile }) {
                   </Fg>
                   <button className="btn-primary" type="submit" disabled={postLoading}>{postLoading?'Publishing...':'Publish Post'}</button>
                 </form>
-                {posts.map(p=>(
-                  <div key={p.id} style={{padding:'1rem',border:'1px solid rgba(255,255,255,0.07)',marginBottom:'0.75rem',display:'flex',justifyContent:'space-between',gap:'1rem',alignItems:'flex-start'}}>
-                    <div style={{flex:1}}>
-                      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:'1.25rem',marginBottom:'0.2rem'}}>{p.title}</div>
-                      <div style={{fontFamily:'monospace',fontSize:'0.6rem',color:'#6a6a6a',marginBottom:'0.4rem'}}>{new Date(p.created_at).toLocaleDateString()}</div>
-                      <div style={{fontSize:'0.83rem',color:'rgba(255,255,255,0.65)',lineHeight:1.55}}>{p.content}</div>
-                      {p.media_url&&p.media_type==='image'&&<img src={p.media_url} alt={p.title} style={{maxHeight:120,marginTop:'0.6rem',display:'block'}}/>}
-                      {p.media_url&&p.media_type==='video'&&<video src={p.media_url} controls style={{maxHeight:120,marginTop:'0.6rem',display:'block'}}/>}
-                    </div>
-                    <button style={A.btnR} onClick={()=>doDeletePost(p.id)}>Delete</button>
-                  </div>
-                ))}
+                {posts.length>0&&(
+                  <>
+                    <div style={A.secT}>Published Posts ({posts.length})</div>
+                    {posts.map(p=>(
+                      <div key={p.id} style={{padding:'1rem',border:'1px solid rgba(255,255,255,0.07)',marginBottom:'0.75rem',display:'flex',justifyContent:'space-between',gap:'1rem',alignItems:'flex-start'}}>
+                        <div style={{flex:1}}>
+                          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:'1.25rem',marginBottom:'0.2rem'}}>{p.title}</div>
+                          <div style={{fontFamily:'monospace',fontSize:'0.6rem',color:'#6a6a6a',marginBottom:'0.4rem'}}>{new Date(p.created_at).toLocaleDateString()}</div>
+                          <div style={{fontSize:'0.83rem',color:'rgba(255,255,255,0.65)',lineHeight:1.55}}>{p.content}</div>
+                          {p.media_url&&p.media_type==='image'&&<img src={p.media_url} alt={p.title} style={{maxHeight:120,marginTop:'0.6rem',display:'block'}}/>}
+                          {p.media_url&&p.media_type==='video'&&<video src={p.media_url} controls style={{maxHeight:120,marginTop:'0.6rem',display:'block'}}/>}
+                        </div>
+                        <button style={A.btnR} onClick={()=>doDeletePost(p.id)}>Delete</button>
+                      </div>
+                    ))}
+                  </>
+                )}
               </div>
             )}
 
@@ -495,42 +593,45 @@ export default function Admin({ session, profile }) {
                       <Fg label="Session Name *"><input className="input" required value={newTT.session_name} onChange={e=>setNewTT({...newTT,session_name:e.target.value})} placeholder="e.g. General Training"/></Fg>
                       <Fg label="Session Type"><select className="input" value={newTT.session_type} onChange={e=>setNewTT({...newTT,session_type:e.target.value})}>{STYPES.map(t=><option key={t}>{t}</option>)}</select></Fg>
                     </div>
-                    <Fg label="Notes"><input className="input" value={newTT.notes} onChange={e=>setNewTT({...newTT,notes:e.target.value})} placeholder="e.g. Bring your own board"/></Fg>
+                    <Fg label="Notes (optional)"><input className="input" value={newTT.notes} onChange={e=>setNewTT({...newTT,notes:e.target.value})} placeholder="e.g. Bring your own board"/></Fg>
                     <button className="btn-primary" type="submit">Save Session</button>
                   </form>
                 )}
-                {tt.length===0?<div style={A.emptyBox}>No sessions yet. Click "+ Add New Session" to build your timetable.</div>:(
-                  <div style={{overflowX:'auto'}}>
-                    <table style={A.tbl}>
-                      <thead><tr>{['Day','Time','Session','Type','Notes','Actions'].map(h=><th key={h} style={A.th}>{h}</th>)}</tr></thead>
-                      <tbody>
-                        {tt.map(t=>(
-                          <tr key={t.id}>
-                            {editTT?.id===t.id?(
-                              <>
-                                <td style={A.td}><select className="input" style={{width:115}} value={editTT.day} onChange={e=>setEditTT({...editTT,day:e.target.value})}>{DAYS.map(d=><option key={d}>{d}</option>)}</select></td>
-                                <td style={A.td}><input className="input" style={{width:130}} value={editTT.time} onChange={e=>setEditTT({...editTT,time:e.target.value})}/></td>
-                                <td style={A.td}><input className="input" style={{width:150}} value={editTT.session_name} onChange={e=>setEditTT({...editTT,session_name:e.target.value})}/></td>
-                                <td style={A.td}><select className="input" style={{width:125}} value={editTT.session_type} onChange={e=>setEditTT({...editTT,session_type:e.target.value})}>{STYPES.map(st=><option key={st}>{st}</option>)}</select></td>
-                                <td style={A.td}><input className="input" style={{width:150}} value={editTT.notes||''} onChange={e=>setEditTT({...editTT,notes:e.target.value})}/></td>
-                                <td style={A.td}><button style={A.btnG} onClick={()=>doUpdateTT(t.id,editTT)}>Save</button><button style={A.btn} onClick={()=>setEditTT(null)}>Cancel</button></td>
-                              </>
-                            ):(
-                              <>
-                                <td style={A.td}>{t.day}</td>
-                                <td style={A.td}>{t.time}</td>
-                                <td style={A.td}>{t.session_name}</td>
-                                <td style={A.td}><span style={{...A.catB,...typeColor(t.session_type)}}>{t.session_type}</span></td>
-                                <td style={A.td}><span style={{fontSize:'0.78rem',color:'#6a6a6a'}}>{t.notes||'—'}</span></td>
-                                <td style={A.td}><button style={A.btn} onClick={()=>setEditTT({...t})}>Edit</button><button style={A.btnR} onClick={()=>doDeleteTT(t.id)}>Delete</button></td>
-                              </>
-                            )}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                {tt.length===0
+                  ? <div style={A.emptyBox}>No sessions yet. Click "+ Add New Session" to build your timetable.</div>
+                  : (
+                    <div style={{overflowX:'auto'}}>
+                      <table style={A.tbl}>
+                        <thead><tr>{['Day','Time','Session','Type','Notes','Actions'].map(h=><th key={h} style={A.th}>{h}</th>)}</tr></thead>
+                        <tbody>
+                          {tt.map(t=>(
+                            <tr key={t.id}>
+                              {editTT?.id===t.id?(
+                                <>
+                                  <td style={A.td}><select className="input" style={{width:115}} value={editTT.day} onChange={e=>setEditTT({...editTT,day:e.target.value})}>{DAYS.map(d=><option key={d}>{d}</option>)}</select></td>
+                                  <td style={A.td}><input className="input" style={{width:130}} value={editTT.time} onChange={e=>setEditTT({...editTT,time:e.target.value})}/></td>
+                                  <td style={A.td}><input className="input" style={{width:150}} value={editTT.session_name} onChange={e=>setEditTT({...editTT,session_name:e.target.value})}/></td>
+                                  <td style={A.td}><select className="input" style={{width:125}} value={editTT.session_type} onChange={e=>setEditTT({...editTT,session_type:e.target.value})}>{STYPES.map(st=><option key={st}>{st}</option>)}</select></td>
+                                  <td style={A.td}><input className="input" style={{width:150}} value={editTT.notes||''} onChange={e=>setEditTT({...editTT,notes:e.target.value})}/></td>
+                                  <td style={A.td}><button style={A.btnG} onClick={()=>doUpdateTT(t.id,editTT)}>Save</button><button style={A.btn} onClick={()=>setEditTT(null)}>Cancel</button></td>
+                                </>
+                              ):(
+                                <>
+                                  <td style={A.td}>{t.day}</td>
+                                  <td style={A.td}>{t.time}</td>
+                                  <td style={A.td}>{t.session_name}</td>
+                                  <td style={A.td}><span style={{...A.catB,...typeColor(t.session_type)}}>{t.session_type}</span></td>
+                                  <td style={A.td}><span style={{fontSize:'0.78rem',color:'#6a6a6a'}}>{t.notes||'—'}</span></td>
+                                  <td style={A.td}><button style={A.btn} onClick={()=>setEditTT({...t})}>Edit</button><button style={A.btnR} onClick={()=>doDeleteTT(t.id)}>Delete</button></td>
+                                </>
+                              )}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )
+                }
               </div>
             )}
 
@@ -538,21 +639,27 @@ export default function Admin({ session, profile }) {
             {sec==='teamprofiles'&&(
               <div>
                 <div style={A.title}>TEAM PROFILES</div>
-                <p style={A.subP}>Click "Edit Profile" on any member to update their photo, stance, level, trick, idol and more.</p>
+                <p style={A.subP}>Edit any member's photo, stance, level, trick, idol, school info and more.</p>
                 <div style={{overflowX:'auto'}}>
                   <table style={A.tbl}>
-                    <thead><tr>{['Photo','Name','Age','Category','Stance','Level','Trick','Idol','Visible','Actions'].map(h=><th key={h} style={A.th}>{h}</th>)}</tr></thead>
+                    <thead><tr>{['Photo','Name','Age','Role','Category','School','Grade','Stance','Level','Trick','Visible','Actions'].map(h=><th key={h} style={A.th}>{h}</th>)}</tr></thead>
                     <tbody>
                       {members.map(m=>(
                         <tr key={m.id}>
-                          <td style={A.td}><div style={{width:38,height:38,background:'#5c1212',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:'0.85rem',color:'#c8a232'}}>{m.photo_url?<img src={m.photo_url} alt={m.full_name} style={{width:'100%',height:'100%',objectFit:'cover'}}/>:m.full_name?.split(' ').map(w=>w[0]).join('').slice(0,2)}</div></td>
+                          <td style={A.td}>
+                            <div style={{width:38,height:38,background:'#5c1212',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:'0.85rem',color:'#c8a232'}}>
+                              {m.photo_url?<img src={m.photo_url} alt={m.full_name} style={{width:'100%',height:'100%',objectFit:'cover'}}/>:m.full_name?.split(' ').map(w=>w[0]).join('').slice(0,2)}
+                            </div>
+                          </td>
                           <td style={A.td}>{m.full_name}</td>
                           <td style={A.td}><span style={A.gold}>{m.date_of_birth?calcAge(m.date_of_birth)+'y':'—'}</span></td>
+                          <td style={A.td}>{m.role||'—'}</td>
                           <td style={A.td}><span style={{...A.catB,...catColor(m.category)}}>{m.category||'—'}</span></td>
+                          <td style={A.td}>{m.school||'—'}</td>
+                          <td style={A.td}>{m.grade||'—'}</td>
                           <td style={A.td}>{m.stance||'—'}</td>
                           <td style={A.td}>{m.level||'—'}</td>
                           <td style={A.td}>{m.favourite_trick||'—'}</td>
-                          <td style={A.td}>{m.idol_skater||'—'}</td>
                           <td style={A.td}><span style={m.is_visible?A.ok:A.pend}>{m.is_visible?'Visible':'Hidden'}</span></td>
                           <td style={A.td}>
                             <button style={A.btnG} onClick={()=>setEditM(m)}>Edit Profile</button>
@@ -571,61 +678,60 @@ export default function Admin({ session, profile }) {
             {sec==='reviews'&&(
               <div>
                 <div style={A.title}>REVIEWS & COMMENTS</div>
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem',marginBottom:'1.5rem'}}>
-                  <div style={A.card}><div style={A.cardN}>{reviews.filter(r=>!r.is_approved).length}</div><div style={A.cardL}>Pending Approval</div></div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'0.75rem',marginBottom:'1.5rem'}}>
+                  <div style={A.card}><div style={A.cardN}>{reviews.filter(r=>!r.is_approved).length}</div><div style={A.cardL}>Pending</div></div>
                   <div style={A.card}><div style={A.cardN}>{reviews.filter(r=>r.is_approved).length}</div><div style={A.cardL}>Published</div></div>
+                  <div style={A.card}><div style={A.cardN}>{reviews.length}</div><div style={A.cardL}>Total</div></div>
                 </div>
-
-                {reviews.length===0?<div style={A.emptyBox}>No reviews or comments yet.</div>:(
-                  <>
-                    {/* PENDING */}
-                    {reviews.filter(r=>!r.is_approved).length>0&&(
-                      <>
-                        <div style={A.secT}>Pending Approval ({reviews.filter(r=>!r.is_approved).length})</div>
-                        {reviews.filter(r=>!r.is_approved).map(r=>(
-                          <div key={r.id} style={{...A.reviewCard,borderColor:'rgba(200,162,50,0.3)'}}>
-                            <div style={A.reviewTop}>
-                              <div style={A.reviewAvatar}>{r.name.charAt(0).toUpperCase()}</div>
-                              <div>
-                                <div style={{fontWeight:700,fontSize:'0.9rem'}}>{r.name}</div>
-                                <div style={{fontSize:'0.7rem',color:'#6a6a6a',fontFamily:"'Space Mono',monospace"}}>{new Date(r.created_at).toLocaleDateString()} · {r.email||'No email'}</div>
+                {reviews.length===0
+                  ? <div style={A.emptyBox}>No reviews or comments yet.</div>
+                  : (
+                    <>
+                      {reviews.filter(r=>!r.is_approved).length>0&&(
+                        <>
+                          <div style={A.secT}>Pending Approval ({reviews.filter(r=>!r.is_approved).length})</div>
+                          {reviews.filter(r=>!r.is_approved).map(r=>(
+                            <div key={r.id} style={{...A.reviewCard,borderColor:'rgba(200,162,50,0.3)'}}>
+                              <div style={A.reviewTop}>
+                                <div style={A.reviewAvatar}>{r.name.charAt(0).toUpperCase()}</div>
+                                <div style={{flex:1}}>
+                                  <div style={{fontWeight:700,fontSize:'0.9rem'}}>{r.name}</div>
+                                  <div style={{fontSize:'0.7rem',color:'#6a6a6a',fontFamily:"'Space Mono',monospace"}}>{new Date(r.created_at).toLocaleDateString()} · {r.email||'No email'} · {r.type}</div>
+                                </div>
                               </div>
-                              <span style={{...A.catB,background:'rgba(200,162,50,0.12)',color:'#c8a232',marginLeft:'auto'}}>{r.type}</span>
-                            </div>
-                            {r.rating&&<div style={{color:'#c8a232',fontSize:'1rem',marginBottom:'0.5rem'}}>{'★'.repeat(r.rating)+'☆'.repeat(5-r.rating)}</div>}
-                            <div style={{fontSize:'0.85rem',color:'rgba(255,255,255,0.75)',lineHeight:1.6,marginBottom:'0.8rem'}}>{r.message}</div>
-                            <div style={{display:'flex',gap:'0.6rem'}}>
-                              <button style={A.btnG} onClick={()=>doApproveReview(r.id)}>✅ Approve & Publish</button>
-                              <button style={A.btnR} onClick={()=>doDeleteReview(r.id)}>❌ Delete</button>
-                            </div>
-                          </div>
-                        ))}
-                      </>
-                    )}
-
-                    {/* APPROVED */}
-                    {reviews.filter(r=>r.is_approved).length>0&&(
-                      <>
-                        <div style={{...A.secT,marginTop:'1.5rem'}}>Published ({reviews.filter(r=>r.is_approved).length})</div>
-                        {reviews.filter(r=>r.is_approved).map(r=>(
-                          <div key={r.id} style={{...A.reviewCard,borderColor:'rgba(109,200,109,0.2)'}}>
-                            <div style={A.reviewTop}>
-                              <div style={A.reviewAvatar}>{r.name.charAt(0).toUpperCase()}</div>
-                              <div>
-                                <div style={{fontWeight:700,fontSize:'0.9rem'}}>{r.name}</div>
-                                <div style={{fontSize:'0.7rem',color:'#6a6a6a',fontFamily:"'Space Mono',monospace"}}>{new Date(r.created_at).toLocaleDateString()}</div>
+                              {r.rating&&<div style={{color:'#c8a232',fontSize:'1rem',marginBottom:'0.5rem'}}>{'★'.repeat(r.rating)+'☆'.repeat(5-r.rating)}</div>}
+                              <div style={{fontSize:'0.85rem',color:'rgba(255,255,255,0.75)',lineHeight:1.6,marginBottom:'0.8rem'}}>{r.message}</div>
+                              <div style={{display:'flex',gap:'0.6rem'}}>
+                                <button style={A.btnG} onClick={()=>doApproveReview(r.id)}>✅ Approve & Publish</button>
+                                <button style={A.btnR} onClick={()=>doDeleteReview(r.id)}>❌ Delete</button>
                               </div>
-                              <span style={{...A.catB,background:'rgba(100,200,100,0.12)',color:'#6dc86d',marginLeft:'auto'}}>{r.type}</span>
                             </div>
-                            {r.rating&&<div style={{color:'#c8a232',fontSize:'1rem',marginBottom:'0.5rem'}}>{'★'.repeat(r.rating)+'☆'.repeat(5-r.rating)}</div>}
-                            <div style={{fontSize:'0.85rem',color:'rgba(255,255,255,0.75)',lineHeight:1.6,marginBottom:'0.6rem'}}>{r.message}</div>
-                            <button style={A.btnR} onClick={()=>doDeleteReview(r.id)}>Delete</button>
-                          </div>
-                        ))}
-                      </>
-                    )}
-                  </>
-                )}
+                          ))}
+                        </>
+                      )}
+                      {reviews.filter(r=>r.is_approved).length>0&&(
+                        <>
+                          <div style={{...A.secT,marginTop:'1.5rem'}}>Published ({reviews.filter(r=>r.is_approved).length})</div>
+                          {reviews.filter(r=>r.is_approved).map(r=>(
+                            <div key={r.id} style={{...A.reviewCard,borderColor:'rgba(109,200,109,0.2)'}}>
+                              <div style={A.reviewTop}>
+                                <div style={A.reviewAvatar}>{r.name.charAt(0).toUpperCase()}</div>
+                                <div style={{flex:1}}>
+                                  <div style={{fontWeight:700,fontSize:'0.9rem'}}>{r.name}</div>
+                                  <div style={{fontSize:'0.7rem',color:'#6a6a6a',fontFamily:"'Space Mono',monospace"}}>{new Date(r.created_at).toLocaleDateString()} · {r.type}</div>
+                                </div>
+                                <span style={{color:'#6dc86d',fontFamily:"'Space Mono',monospace",fontSize:'0.58rem'}}>PUBLISHED</span>
+                              </div>
+                              {r.rating&&<div style={{color:'#c8a232',fontSize:'1rem',marginBottom:'0.5rem'}}>{'★'.repeat(r.rating)+'☆'.repeat(5-r.rating)}</div>}
+                              <div style={{fontSize:'0.85rem',color:'rgba(255,255,255,0.75)',lineHeight:1.6,marginBottom:'0.6rem'}}>{r.message}</div>
+                              <button style={A.btnR} onClick={()=>doDeleteReview(r.id)}>Delete</button>
+                            </div>
+                          ))}
+                        </>
+                      )}
+                    </>
+                  )
+                }
               </div>
             )}
 
@@ -660,14 +766,14 @@ function EditMemberModal({ m, onSave, onClose, onPhoto, calcAge }) {
   const init = m.full_name?.split(' ').map(w=>w[0]).join('').slice(0,2)
 
   function handlePhoto(e) {
-    const file=e.target.files[0]; if(!file)return
+    const file=e.target.files[0]; if(!file) return
     setPhotoFile(file)
     const r=new FileReader(); r.onload=ev=>setPhotoPrev(ev.target.result); r.readAsDataURL(file)
   }
 
   function save() {
-    onSave(m.id,{...f,student:f.category==='Student',working:f.category==='Working'})
-    if(photoFile) onPhoto(m.id,photoFile)
+    onSave(m.id, {...f, student:f.category==='Student', working:f.category==='Working'})
+    if (photoFile) onPhoto(m.id, photoFile)
   }
 
   return (
@@ -676,7 +782,6 @@ function EditMemberModal({ m, onSave, onClose, onPhoto, calcAge }) {
         <button onClick={onClose} style={{position:'absolute',top:'0.75rem',right:'0.85rem',background:'none',border:'none',color:'#6a6a6a',fontSize:'1.6rem',cursor:'pointer',lineHeight:1}}>×</button>
         <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:'1.8rem',marginBottom:'1.4rem',color:'#f0e8d0'}}>✏️ Edit: {m.full_name}</div>
 
-        {/* Photo + Basic Info */}
         <div style={{display:'grid',gridTemplateColumns:'140px 1fr',gap:'1.5rem',marginBottom:'1.3rem'}}>
           <div>
             <div style={{width:135,height:135,background:'#5c1212',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:'2.8rem',color:'#c8a232',overflow:'hidden',position:'relative',marginBottom:'0.6rem'}}>
@@ -699,7 +804,6 @@ function EditMemberModal({ m, onSave, onClose, onPhoto, calcAge }) {
           </div>
         </div>
 
-        {/* School info */}
         {f.category==='Student'&&(
           <>
             <div style={A.sHead}>School Information</div>
@@ -710,7 +814,6 @@ function EditMemberModal({ m, onSave, onClose, onPhoto, calcAge }) {
           </>
         )}
 
-        {/* Emergency contact */}
         <div style={A.sHead}>Emergency Contact</div>
         <Fg label="Contact Name"><input className="input" value={f.emergency_name} onChange={e=>setF({...f,emergency_name:e.target.value})} placeholder="e.g. Mama Fatuma"/></Fg>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem',marginBottom:'0.85rem'}}>
@@ -718,7 +821,6 @@ function EditMemberModal({ m, onSave, onClose, onPhoto, calcAge }) {
           <Fg label="Phone / WhatsApp"><input className="input" type="tel" value={f.emergency_phone} onChange={e=>setF({...f,emergency_phone:e.target.value})} placeholder="+255 ..."/></Fg>
         </div>
 
-        {/* Skating profile */}
         <div style={A.sHead}>Skating Profile</div>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem',marginBottom:'0.85rem'}}>
           <Fg label="Stance"><select className="input" value={f.stance} onChange={e=>setF({...f,stance:e.target.value})}>{STANCES.map(s=><option key={s}>{s}</option>)}</select></Fg>
