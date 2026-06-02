@@ -842,9 +842,7 @@ function EditMemberModal({ m, onSave, onClose, onPhoto, calcAge }) {
   )
 }
 
-function Fg({ label, children }) {
-  return <div style={{marginBottom:'0.85rem'}}><label className="label">{label}</label>{children}</div>
-}
+
 
 const A = {
   bar:      {background:'#5c1212',padding:'0.4rem 1.4rem',fontFamily:"'Space Mono',monospace",fontSize:'0.62rem',letterSpacing:'0.07em',color:'#f0e8d0',display:'flex',alignItems:'center',justifyContent:'space-between',borderBottom:'1px solid rgba(200,162,50,0.28)'},
