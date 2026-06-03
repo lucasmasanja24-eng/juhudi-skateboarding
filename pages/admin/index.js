@@ -114,27 +114,26 @@ export default function Admin({ session, profile }) {
 
   // ── USER APPROVALS ─────────────────────────────────────
   // FIX: remove from pending list instantly on approve
-  async function doApprove(id) {
-    try {
-      await approveUser(id)
-      // Remove from pending list immediately — don't wait for reload
-      setPending(prev => prev.filter(u => u.id !== id))
-      showToast('User approved! They now appear on the team page. ✅')
-      // Reload members list so they show up in All Members
-      const m = await getAllMembers()
-      setMembers(m||[])
-    } catch(e){ showToast('Error: '+e.message,'err') }
-  }
+ async function doApprove(id) {
+  try {
+    await approveUser(id)
+    // Remove from pending immediately and never re-add
+    setPending(prev => prev.filter(u => u.id !== id))
+    // Update members list without calling load() which would re-fetch pending
+    const m = await getAllMembers()
+    setMembers(m||[])
+    showToast('User approved! They now appear on the team page. ✅')
+  } catch(e){ showToast('Error: '+e.message,'err') }
+}
 
   async function doReject(id) {
-    if(!confirm('Reject and permanently delete this user?')) return
-    try {
-      await rejectUser(id)
-      // Remove from pending list immediately
-      setPending(prev => prev.filter(u => u.id !== id))
-      showToast('User rejected and removed.')
-    } catch(e){ showToast('Error: '+e.message,'err') }
-  }
+  if(!confirm('Reject and permanently delete this user?')) return
+  try {
+    await rejectUser(id)
+    setPending(prev => prev.filter(u => u.id !== id))
+    showToast('User rejected and removed.')
+  } catch(e){ showToast('Error: '+e.message,'err') }
+}
 
   // ── MEMBERS ────────────────────────────────────────────
   async function doUpdateMember(id,updates) {
