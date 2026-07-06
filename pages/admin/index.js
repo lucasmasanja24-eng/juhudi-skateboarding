@@ -149,10 +149,26 @@ export default function Admin({ session, profile }) {
     try { await toggleMemberVisibility(id,vis); load(); showToast('Visibility updated.') }
     catch(e){ showToast('Error: '+e.message,'err') }
   }
-  async function doPhotoUpload(id,file) {
-    try { const url=await uploadProfilePhoto(id,file); await updateProfile(id,{photo_url:url}); load(); showToast('Photo updated! ✅') }
-    catch(e){ showToast('Photo upload failed: '+e.message,'err') }
-  }
+  async function doPhotoUpload(id, file) {
+  try {
+    const ext = file.name.split('.').pop()
+    const filename = `${id}_${Date.now()}.${ext}`
+    const { error: upErr } = await supabase.storage
+      .from('profiles')
+      .upload(filename, file, { upsert: true })
+    if (upErr) throw upErr
+    const { data: { publicUrl } } = supabase.storage
+      .from('profiles')
+      .getPublicUrl(filename)
+    // Add timestamp to bust cache
+    const urlWithCache = `${publicUrl}?t=${Date.now()}`
+    await updateProfile(id, { photo_url: urlWithCache })
+    // Update local state immediately without waiting for load()
+    setMembers(prev => prev.map(m => m.id === id ? { ...m, photo_url: urlWithCache } : m))
+    setEditM(prev => prev ? { ...prev, photo_url: urlWithCache } : null)
+    showToast('Photo updated! ✅')
+  } catch(e) { showToast('Photo upload failed: '+e.message, 'err') }
+}
   async function doAddMember(e) {
     e.preventDefault()
     if(!newM.full_name){ showToast('Name is required','err'); return }
